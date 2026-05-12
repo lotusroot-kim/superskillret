@@ -2,7 +2,7 @@
 
 > Embedding-based **skill retrieval plugin for Claude Code**. On every user prompt it silently picks the top‑K most relevant skills from a pool of 16,783 public skills and injects them as context — so Claude gets the right "how to" reference without you preloading every skill in the system prompt.
 
-Built on [`ThakiCloud/SkillRet-Embedding-0.6B`](https://huggingface.co/ThakiCloud/SkillRet-Embedding-0.6B) (fine‑tuned from Qwen3‑Embedding‑0.6B) over the [`ThakiCloud/SKILLRET`](https://huggingface.co/datasets/ThakiCloud/SKILLRET) 16,783‑skill corpus. Ships with an INT8‑quantized ONNX encoder ([`youngryankim/superskillret-onnx-int8`](https://huggingface.co/youngryankim/superskillret-onnx-int8), 598 MB) plus a prebuilt, INT8‑quantized embedding index ([`youngryankim/superskillret-index`](https://huggingface.co/datasets/youngryankim/superskillret-index)). Warm retrieval is ~0.3 s end‑to‑end on CPU.
+Built on [`ThakiCloud/SkillRet-Embedding-0.6B`](https://huggingface.co/ThakiCloud/SkillRet-Embedding-0.6B) (fine‑tuned from Qwen3‑Embedding‑0.6B) over the [`ThakiCloud/SKILLRET`](https://huggingface.co/datasets/ThakiCloud/SKILLRET) 16,783‑skill corpus. Ships with an INT8‑quantized ONNX encoder ([`youngryankim/superskillret-onnx-int8`](https://huggingface.co/youngryankim/superskillret-onnx-int8), 598 MB) plus a prebuilt, INT8‑quantized **full‑context** embedding index ([`youngryankim/superskillret-index-fullcontext`](https://huggingface.co/datasets/youngryankim/superskillret-index-fullcontext)) that encodes each skill's `name + description + full body` up to 32k tokens. Warm retrieval is ~0.3 s end‑to‑end on CPU.
 
 ## Quickstart
 
@@ -68,7 +68,7 @@ Bump `MIN_SCORE` if you want fewer, more relevant hits; lower it if you want mor
 | `SUPERSKILLRET_SPAWN_WAIT` | `180` | seconds the hook waits for a lazy‑spawned daemon to come up. Raise on slow networks / first‑time installs. |
 | `SUPERSKILLRET_SEEN_TRACKING` | `1` | per‑session dedup: skip skills already returned in the same Claude Code session. Set to `0` to always return the absolute top‑K. |
 | `SUPERSKILLRET_ONNX_REPO` | `youngryankim/superskillret-onnx-int8` | HF repo the encoder is fetched from. Override to use your own fine‑tuned encoder. |
-| `SUPERSKILLRET_INDEX_REPO` | `youngryankim/superskillret-index` | HF repo the prebuilt index is fetched from. Override if you publish your own skill corpus. |
+| `SUPERSKILLRET_INDEX_REPO` | `youngryankim/superskillret-index-fullcontext` | HF repo the prebuilt index is fetched from. Override if you publish your own skill corpus. |
 
 Variables can be set in the shell, in `~/.claude/settings.json` under `"env": {...}`, or in the hook `command` itself. A handful of lower‑level knobs (socket/pid/log paths, ONNX dir override, session‑dedup internals, `BACKEND=pytorch` fallback) live in the daemon docstring if you need them.
 
@@ -121,9 +121,9 @@ superskillret/
 │   ├── install.sh                 # one‑shot setup (venv, ONNX encoder, embedding index)
 │   ├── daemon.py                  # long‑running retrieval server (Unix socket)
 │   ├── retrieve.py                # UserPromptSubmit hook: thin socket client + wait‑notice
-│   ├── build_index.py             # (re)build the embedding index from a skill pool
+│   ├── build_index_fullcontext.py # (re)build the full‑context embedding index from a skill pool
 │   ├── quantize_onnx.py           # INT8‑quantize a fresh ONNX export
-│   ├── publish_index.py           # upload cache/ to HF dataset repo (maintainer only)
+│   ├── publish_index_fullcontext.py # upload cache_fullcontext/ to HF dataset repo (maintainer only)
 │   ├── compare_backends.py        # PyTorch vs ONNX FP32 vs INT8 parity benchmark (dev)
 │   └── smoke_test.py              # small retrieval sanity test (dev)
 ├── figure/
@@ -152,7 +152,7 @@ Model card eval (FP32): NDCG@15 = 0.7887, Recall@10 = 0.8542. The INT8 pipeline 
 - **No skills ever get injected.** Run `/superskillret:status`. If the socket is missing and ping fails, try `bash scripts/install.sh` directly in a terminal to see the full error. Common causes: HF repo unreachable, pip install failed.
 - **Retrieved skills feel off.** Raise `SUPERSKILLRET_MIN_SCORE` to `0.40`–`0.45` so only strongly matching hits survive, and/or drop `SUPERSKILLRET_TOP_K` to 1–2.
 - **Context window fills up too fast.** Each hit is ~2–5 KB of `SKILL.md`; lower `TOP_K` and raise `MIN_SCORE`. See the token‑cost table above.
-- **Want to use a custom skill pool.** Replace `skill_pool/skills.jsonl` (one JSON record per line with `name`, `description`, `body`), run `python scripts/build_index.py`, then restart the daemon via `/superskillret:stop`.
+- **Want to use a custom skill pool.** Replace `skill_pool/skills.jsonl` (one JSON record per line with `name`, `description`, `body`), run `python scripts/build_index_fullcontext.py`, then restart the daemon via `/superskillret:stop`.
 
 ## Status & roadmap
 
@@ -162,7 +162,7 @@ Production‑ready and installed via the `lotusroot-kim` marketplace. End‑to�
 
 - **ONNX INT8 encoder** (598 MB, ~0.1 s CPU inference) replaces the 2.4 GB PyTorch path. ~18× faster than the original 5.5 s warm latency. Published at [`youngryankim/superskillret-onnx-int8`](https://huggingface.co/youngryankim/superskillret-onnx-int8).
 - **INT8‑quantized embedding index** (17 MB + 67 KB scale vs. 34 MB FP32), auto‑selected by the daemon when present. Reconstruction error mean 2e‑4 / max 8e‑4.
-- **Prebuilt index** at [`youngryankim/superskillret-index`](https://huggingface.co/datasets/youngryankim/superskillret-index) (public). `install.sh` downloads in ~5 s, falls back to a local rebuild (30–60 min on CPU) only if HF is unreachable.
+- **Prebuilt index** at [`youngryankim/superskillret-index-fullcontext`](https://huggingface.co/datasets/youngryankim/superskillret-index-fullcontext) (public; FP16 + INT8 + scale + metadata, ~210 MB). Encodes each skill's `name + description + full body` up to 32k tokens. `install.sh` downloads in ~5 s, falls back to a local rebuild (`scripts/build_index_fullcontext.py`) only if HF is unreachable.
 - **Self‑hosted marketplace** in the same repo (`.claude-plugin/marketplace.json`, HTTPS source so SSH‑keyless installs work).
 - **Auto‑bootstrap**: `SessionStart` hook forks `install.sh` in the background; `retrieve.py` shows a polite English wait‑notice until the `.installed` marker appears. No manual `bash scripts/install.sh` required for regular users.
 
@@ -183,9 +183,9 @@ Production‑ready and installed via the `lotusroot-kim` marketplace. End‑to�
 Bump the index:
 
 ```bash
-# bump cache/VERSION first, then:
-python scripts/build_index.py
-HF_TOKEN=... python scripts/publish_index.py --repo youngryankim/superskillret-index
+# bump cache_fullcontext/VERSION first, then:
+python scripts/build_index_fullcontext.py --batch-size 8 --max-seq-length 32768
+HF_TOKEN=... python scripts/publish_index_fullcontext.py --repo youngryankim/superskillret-index-fullcontext
 ```
 
 Refresh the ONNX encoder:

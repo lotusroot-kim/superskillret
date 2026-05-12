@@ -22,7 +22,7 @@ VENV="$ROOT/.venv"
 PY="$VENV/bin/python"
 PIP="$VENV/bin/pip"
 
-INDEX_REPO="${SUPERSKILLRET_INDEX_REPO:-youngryankim/superskillret-index}"
+INDEX_REPO="${SUPERSKILLRET_INDEX_REPO:-youngryankim/superskillret-index-fullcontext}"
 ONNX_REPO="${SUPERSKILLRET_ONNX_REPO:-youngryankim/superskillret-onnx-int8}"
 
 log() { printf '[superskillret] %s\n' "$*"; }
@@ -115,7 +115,14 @@ try:
         repo_id=repo,
         repo_type="dataset",
         local_dir=str(root / "cache"),
-        allow_patterns=["skill_embeddings.npy", "skill_metadata.jsonl", "VERSION", "README.md"],
+        allow_patterns=[
+            "skill_embeddings.npy",
+            "skill_embeddings_int8.npy",
+            "skill_embeddings_scale.npy",
+            "skill_metadata.jsonl",
+            "VERSION",
+            "README.md",
+        ],
     )
     print("[superskillret] prebuilt index downloaded")
 except (HfHubHTTPError, RepositoryNotFoundError, GatedRepoError) as e:
@@ -136,8 +143,9 @@ PYEOF
 fi
 
 # 5. skill pool — needed either to build index locally, OR so custom workflows
-# (scripts/build_index.py, scripts/publish_index.py) can re-run. If we already
-# have the prebuilt index and the pool is missing, skip the 300MB download.
+# (scripts/build_index_fullcontext.py, scripts/publish_index_fullcontext.py)
+# can re-run. If we already have the prebuilt index and the pool is missing,
+# skip the 300MB download.
 POOL="$ROOT/skill_pool/skills.jsonl"
 if [ "$need_index" = "1" ] && { [ ! -s "$POOL" ] || [ "${FORCE:-0}" = "1" ]; }; then
   log "downloading SKILLRET skill pool (~300MB, required for local index build)"
@@ -160,8 +168,8 @@ fi
 
 # 6. build index locally if we still need it
 if [ "$need_index" = "1" ]; then
-  log "building embedding index (slow on CPU; ~30-60 min)"
-  "$PY" "$ROOT/scripts/build_index.py" --batch-size 32
+  log "building full-context embedding index (slow on CPU; many hours — prefer the prebuilt index)"
+  "$PY" "$ROOT/scripts/build_index_fullcontext.py" --batch-size 1 --max-seq-length 32768 --device cpu --out-dir "$ROOT/cache"
 fi
 
 touch "$ROOT/.installed"

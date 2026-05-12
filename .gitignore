@@ -1,15 +1,17 @@
 # Plugin venv (recreated by scripts/install.sh)
 .venv/
+.venv-gpu/
 
 # Skill pool is ~300 MB; users only need it if they build the index locally,
 # which install.sh does only when the prebuilt HF dataset is unreachable.
 skill_pool/
 
 # Embedding artifacts — fetched at install time from
-# https://huggingface.co/datasets/youngryankim/superskillret-index
+# https://huggingface.co/datasets/youngryankim/superskillret-index-fullcontext
 # so they should not live in git.
 cache/*.npy
 cache/*.jsonl
+cache_fullcontext/
 
 # But keep the VERSION stamp and readme so reviewers see what to expect.
 !cache/VERSION

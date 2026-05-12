@@ -1,7 +1,7 @@
 {
   "name": "superskillret",
-  "version": "0.1.1",
-  "description": "Embedding-based skill retrieval for Claude Code. On every user prompt, picks the top-K relevant skills from a 16,783-skill pool and injects them as context. v0.1.1: Added per-session deduplication and automatic bootstrap via install script on SessionStart.",
+  "version": "0.1.2",
+  "description": "Embedding-based skill retrieval for Claude Code. On every user prompt, picks the top-K relevant skills from a 16,783-skill pool and injects them as context. v0.1.2: Switched the prebuilt index to a full-context build (encodes name + description + body up to 32k tokens) for better recall on body-only keywords.",
   "author": {
     "name": "lotusroot-kim",
     "url": "https://github.com/lotusroot-kim"

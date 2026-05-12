@@ -12,7 +12,7 @@
         "url": "https://github.com/lotusroot-kim/superskillret.git"
       },
       "description": "Embedding-based skill retrieval. On every user prompt, picks the top-K relevant skills from a 16,783-skill pool (ThakiCloud/SKILLRET) and injects them as context, using the ThakiCloud/SkillRet-Embedding-0.6B encoder behind a long-running local daemon.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "license": "MIT",
       "keywords": ["retrieval", "skills", "embedding", "rag", "hook"],
       "homepage": "https://github.com/lotusroot-kim/superskillret"

@@ -29,7 +29,7 @@ Prebuilt embedding index for the [superskillret](../superskillret) Claude Code p
 
 ```python
 from huggingface_hub import snapshot_download
-snapshot_download(repo_id="youngryankim/superskillret-index",
+snapshot_download(repo_id="youngryankim/superskillret-index-fullcontext",
                   repo_type="dataset",
                   local_dir="cache/")
 ```
