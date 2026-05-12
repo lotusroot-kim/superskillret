@@ -11,9 +11,10 @@ In a Claude Code session:
 ```
 /plugin marketplace add lotusroot-kim/superskillret
 /plugin install superskillret@lotusroot-kim
+/superskillret:install
 ```
 
-Then restart Claude Code (or run `/reload-plugins`). On the next `SessionStart`, a bootstrap hook spawns `scripts/install.sh` in the background. It creates a local venv, downloads the ONNX INT8 encoder and the prebuilt skill index from Hugging Face, and writes a `.installed` marker when it finishes — typically **1–2 minutes** on a reasonable connection.
+`/superskillret:install` runs `scripts/install.sh` once: creates a local venv, downloads the ONNX INT8 encoder and the prebuilt skill index from Hugging Face, and writes a `.installed` marker when it finishes — typically **1–2 minutes** on a reasonable connection. (If you restart Claude Code instead, a `SessionStart` bootstrap hook fires the same script automatically; `/reload-plugins` alone does not, hence the explicit command.)
 
 While setup is running your first user prompts get a short English notice asking you to wait. Once `.installed` lands, skill retrieval activates automatically on every subsequent prompt. No manual step required.
 
